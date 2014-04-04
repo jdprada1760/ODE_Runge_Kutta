@@ -11,8 +11,8 @@
 #define n_dim 2
 #define n_masses 3
 #define theta 2*PI/3.0
-#define r R*sqrt(3)
-#define v sqrt(3.0)*R
+#define r R*sqrt(3.0)
+#define v sqrt((11.0*G*solar_mass)/(3.0*r))
 
 FLOAT norm( FLOAT vec1, FLOAT vec2 );
 FLOAT dotP( FLOAT vec11, FLOAT vec12, FLOAT vec21, FLOAT vec22);
