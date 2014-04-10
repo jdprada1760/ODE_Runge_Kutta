@@ -12,7 +12,7 @@
 #define n_masses 3
 #define theta 2*PI/3.0
 #define r R*sqrt(3.0)
-#define v sqrt((1.10*G*solar_mass)/(3.0*r))
+#define v sqrt((1.1*G*solar_mass)/(3.0*r))
 
 FLOAT norm( FLOAT vec1, FLOAT vec2 );
 FLOAT dotP( FLOAT vec11, FLOAT vec12, FLOAT vec21, FLOAT vec22);
@@ -22,7 +22,6 @@ void initPos( FLOAT *xX, FLOAT *xY );
 void initVel( FLOAT *vX, FLOAT *vY );
 void initMass( FLOAT *m );
 void updateAcc( FLOAT *xX, FLOAT *xY, FLOAT *aX, FLOAT *aY , FLOAT *m);
-FLOAT getAccel( FLOAT *xX, FLOAT *xY, FLOAT *m, FLOAT newXx, FLOAT newYy, int j);
 void rungeKutta( FLOAT *xX, FLOAT *xY, FLOAT *vX, FLOAT *vY, FLOAT *m ,FLOAT *aX, FLOAT *aY, FLOAT dt);
 FLOAT calcEnergy(FLOAT *x, FLOAT *y, FLOAT *vx, FLOAT *vy, FLOAT *m);
 
@@ -197,79 +196,134 @@ void updateAcc( FLOAT *xX, FLOAT *xY, FLOAT *aX, FLOAT *aY , FLOAT *m){
 }
 
 /*
- * Obtiene la aceleración del elemento iésimo en función de las posiciones relativas
- */ 
-FLOAT getAccel( FLOAT *xX, FLOAT *xY, FLOAT *m, FLOAT newXx, FLOAT newYy, int j){
-  int i;
-  FLOAT ans = 0;
-  for( i = 0; (i < n_masses); i++){
-    if( i != j ){
-      FLOAT normi = pow(norm((xX[i] - newXx),(xY[i] - newYy)), 3);
-      ans += (G*m[j]*(xX[i]-newXx))/normi;
-    }
-  }
-  return ans;
-}
-
-/*
  * Actualiza las posiciones
  */
 void rungeKutta( FLOAT *xX, FLOAT *xY, FLOAT *vX, FLOAT *vY, FLOAT *m ,FLOAT *aX, FLOAT *aY, FLOAT dt){
   int i;
-  //updateAcc(xX,xY,aX,aY,m);
+  // Vectores de pendientes intermedias Runge-Kutta
+  FLOAT *k1x;
+  FLOAT *k2x;
+  FLOAT *k3x;
+  FLOAT *k4x;
+  FLOAT *kx_mean;
+  FLOAT *k1y;
+  FLOAT *k2y;
+  FLOAT *k3y;
+  FLOAT *k4y;
+  FLOAT *ky_mean;
+  FLOAT *k1vx;
+  FLOAT *k2vx;
+  FLOAT *k3vx;
+  FLOAT *k4vx;
+  FLOAT *kvx_mean;
+  FLOAT *k1vy;
+  FLOAT *k2vy; 
+  FLOAT *k3vy;
+  FLOAT *k4vy;
+  FLOAT *kvy_mean;
+
+  FLOAT *newXx;
+  FLOAT *newXy;
+  FLOAT *newVx;
+  FLOAT *newVy;
+  FLOAT *acx;
+  FLOAT *acy;
+  acx = allocate( n_masses );
+  acy = allocate( n_masses );
+  newXx = allocate( n_masses );
+  newXy = allocate( n_masses );
+  newVx = allocate( n_masses );
+  newVy = allocate( n_masses );
+ 
+  k1x = allocate( n_masses );
+  k2x = allocate( n_masses );
+  k3x = allocate( n_masses );
+  k4x = allocate( n_masses );
+  kx_mean = allocate( n_masses );
+  k1y = allocate( n_masses );
+  k2y = allocate( n_masses );
+  k3y = allocate( n_masses );
+  k4y = allocate( n_masses );
+  ky_mean = allocate( n_masses );
+  k1vx = allocate( n_masses );
+  k2vx = allocate( n_masses );
+  k3vx = allocate( n_masses );
+  k4vx = allocate( n_masses );
+  kvx_mean = allocate( n_masses );
+  k1vy = allocate( n_masses );
+  k2vy = allocate( n_masses );
+  k3vy = allocate( n_masses );
+  k4vy = allocate( n_masses ); 
+  kvy_mean = allocate( n_masses ); 
+  
+  // UpdateAcc(xX,xY,aX,aY,m);
   for( i = 0; i < n_masses; i++){
-    
     // Primera aproximación
-    FLOAT k1x = vX[i];
-    FLOAT k1y = vY[i];
-    FLOAT k1vx = aX[i];
-    FLOAT k1vy = aY[i];
-    
-    // Segunda aproximación
-    FLOAT newXx = xX[i] + k1x*dt/2 ;
-    FLOAT newXy = xY[i] + k1y*dt/2 ;
-    FLOAT newVx = vX[i] + k1vx*dt/2;
-    FLOAT newVy = vY[i] + k1vy*dt/2;
-    FLOAT k2x = newVx ;
-    FLOAT k2y = newVy ;
-    FLOAT k2vx = getAccel(xX,xY,m,newXx,newXy,i);
-    FLOAT k2vy = getAccel(xY,xX,m,newXy,newXx,i);
-    
+    k1x[i] = vX[i];
+    k1y[i] = vY[i];
+    k1vx[i] = aX[i];
+    k1vy[i] = aY[i];
+  }
+  
+  for( i = 0; i < n_masses; i++){ 
+    newXx[i] = xX[i] + k1x[i]*dt/2 ;
+    newXy[i] = xY[i] + k1y[i]*dt/2 ;
+    newVx[i] = vX[i] + k1vx[i]*dt/2;
+    newVy[i] = vY[i] + k1vy[i]*dt/2;
+    k2x[i] = newVx[i];
+    k2y[i] = newVy[i];
+  }
+  
+  updateAcc( newXx, newXy, acx, acy, m); 
+  for( i = 0; i < n_masses; i++){ 
+    k2vx[i] = acx[i];
+    k2vy[i] = acy[i];
+  }
+  
+  for( i = 0; i < n_masses; i++){ 
     // Tercera aproximación
-    newXx = newXx + k2x*dt/2;
-    newXy = newXy + k2y*dt/2;
-    newXx = newVx + k2vx*dt/2;
-    newXx = newVy + k2vy*dt/2;
-    FLOAT k3x = newVx ;
-    FLOAT k3y = newVy ;
-    FLOAT k3vx = getAccel(xX,xY,m,newXx,newXy,i);
-    FLOAT k3vy = getAccel(xY,xX,m,newXy,newXx,i);
-    
+    newXx[i] = newXx[i] + k2x[i]*dt/2;
+    newXy[i] = newXy[i] + k2y[i]*dt/2;
+    newVx[i] = newVx[i] + k2vx[i]*dt/2;
+    newVy[i] = newVy[i] + k2vy[i]*dt/2;
+    k3x[i] = newVx[i] ;
+    k3y[i] = newVy[i] ;
+  }
+  
+  updateAcc( newXx, newXy, acx, acy, m); 
+  for( i = 0; i < n_masses; i++){ 
+    k3vx[i] = acx[i];
+    k3vy[i] = acy[i];
+  }
+
+  for( i = 0; i < n_masses; i++){ 
     // Cuarta aproximación
-    newXx = newXx + k3x*dt;
-    newXy = newXy + k3y*dt;
-    newXx = newVx + k3vx*dt;
-    newXx = newVy + k3vy*dt;
-    FLOAT k4x = newVx ;
-    FLOAT k4y = newVy ;
-    FLOAT k4vx = getAccel(xX,xY,m,newXx,newXy,i);
-    FLOAT k4vy = getAccel(xY,xX,m,newXy,newXx,i);
+    newXx[i] = newXx[i] + k3x[i]*dt;
+    newXy[i] = newXy[i] + k3y[i]*dt;
+    newVx[i] = newVx[i] + k3vx[i]*dt;
+    newVy[i] = newVy[i] + k3vy[i]*dt;
+    k4x[i] = newVx[i];
+    k4y[i] = newVy[i];
+  }
+  updateAcc( newXx, newXy, acx, acy, m); 
+  for( i = 0; i < n_masses; i++){ 
+    k4vx[i] = acx[i];
+    k4vy[i] = acy[i];
+  }
 
+  for( i = 0; i < n_masses; i++){ 
     // Promedio
-    FLOAT kx_mean = (1/6.0)*(k1x + 2*k2x + 2*k3x + k4x);
-    FLOAT ky_mean = (1/6.0)*(k1y + 2*k2y + 2*k3y + k4y);
-    FLOAT kvx_mean = (1/6.0)*(k1vx + 2*k2vx + 2*k3vx + k4vx);
-    FLOAT kvy_mean = (1/6.0)*(k1vy + 2*k2vy + 2*k3vy + k4vy);
-
+    kx_mean[i] = (1/6.0)*(k1x[i] + 2*k2x[i] + 2*k3x[i] + k4x[i]);
+    ky_mean[i] = (1/6.0)*(k1y[i] + 2*k2y[i] + 2*k3y[i] + k4y[i]);
+    kvx_mean[i] = (1/6.0)*(k1vx[i] + 2*k2vx[i] + 2*k3vx[i] + k4vx[i]);
+    kvy_mean[i] = (1/6.0)*(k1vy[i] + 2*k2vy[i] + 2*k3vy[i] + k4vy[i]);
     // Finalmente, los valores actualizados
-    xX[i] = xX[i] + kx_mean*dt;
-    xY[i] = xY[i] + ky_mean*dt;
-    vX[i] = vX[i] + kvx_mean*dt;
-    vY[i] = vY[i] + kvy_mean*dt;
-
+    xX[i] = xX[i] + kx_mean[i]*dt;
+    xY[i] = xY[i] + ky_mean[i]*dt;
+    vX[i] = vX[i] + kvx_mean[i]*dt;
+    vY[i] = vY[i] + kvy_mean[i]*dt;
   }
 }
-
 /*
  * Calcula la energía total del sistema
  */
@@ -282,7 +336,7 @@ FLOAT calcEnergy(FLOAT *xX, FLOAT *xY, FLOAT *vx, FLOAT *vy, FLOAT *m){
     for( j = 0; j < n_masses; j++){
       if( i != j){
 	FLOAT normi = norm((xX[i] - xX[j]),(xY[i] - xY[j]));
-	ener += G*m[i]*m[j]/normi;
+	ener += -G*m[i]*m[j]/normi;
       }
     } 
   }
